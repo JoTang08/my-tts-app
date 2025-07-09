@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Edge-TTS 本地测试</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #f0f4f8;
+        color: #333;
+        max-width: 700px;
+        margin: 40px auto;
+        padding: 20px 30px;
+        box-shadow: 0 4px 12px rgb(0 0 0 / 0.1);
+        border-radius: 12px;
+      }
+      h1 {
+        text-align: center;
+        color: #2c3e50;
+        margin-bottom: 30px;
+        font-weight: 700;
+      }
+      textarea {
+        width: 100%;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        padding: 15px;
+        font-size: 16px;
+        resize: vertical;
+        min-height: 150px;
+        box-sizing: border-box;
+        transition: border-color 0.3s ease;
+      }
+      textarea:focus {
+        border-color: #3498db;
+        outline: none;
+        box-shadow: 0 0 8px rgba(52, 152, 219, 0.4);
+      }
+      label {
+        font-weight: 600;
+        display: block;
+        margin-top: 20px;
+        margin-bottom: 8px;
+        color: #555;
+      }
+      select {
+        padding: 8px 12px;
+        font-size: 16px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        transition: border-color 0.3s ease;
+      }
+      select:focus {
+        border-color: #3498db;
+        outline: none;
+        box-shadow: 0 0 8px rgba(52, 152, 219, 0.4);
+      }
+      button {
+        margin-top: 25px;
+        width: 100%;
+        padding: 14px;
+        background-color: #3498db;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+      button:hover {
+        background-color: #2980b9;
+      }
+      audio {
+        margin-top: 30px;
+        width: 100%;
+        outline: none;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Edge-TTS 本地测试</h1>
+
+    <textarea id="text-input" placeholder="请输入文本..."></textarea>
+
+    <label for="voice-select">选择音色：</label>
+    <select id="voice-select">
+      <option>加载中...</option>
+    </select>
+
+    <button id="speak-btn">生成语音</button>
+
+    <audio id="audio-player" controls></audio>
+
+    <script>
+      async function loadVoices() {
+        const select = document.getElementById("voice-select");
+        select.disabled = true;
+        try {
+          const res = await fetch("/voices");
+          if (!res.ok) throw new Error("加载失败");
+          const voices = await res.json();
+          select.innerHTML = "";
+          voices.forEach((v) => {
+            const option = document.createElement("option");
+            option.value = v.名称;
+            option.textContent = `${v.名称} (${v.语言}, ${v.性别})`;
+            select.appendChild(option);
+          });
+        } catch (e) {
+          select.innerHTML = "<option>加载失败，请刷新</option>";
+        } finally {
+          select.disabled = false;
+        }
+      }
+
+      document.getElementById("speak-btn").onclick = async () => {
+        const text = document.getElementById("text-input").value.trim();
+        const voice = document.getElementById("voice-select").value;
+        if (!text) {
+          alert("请输入文本！");
+          return;
+        }
+
+        const response = await fetch("/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, voice }),
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          alert("错误: " + err.detail);
+          return;
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = document.getElementById("audio-player");
+        audio.src = url;
+        audio.play();
+      };
+
+      window.onload = loadVoices;
+    </script>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+[project]
+name = "my-tts-project"
+version = "0.1.0"
+description = "tts project,for testing edge-tts"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "deep-translator>=1.11.4",
+    "edge-tts>=7.0.2",
+    "fastapi",
+    "python-multipart>=0.0.20",
+    "uvicorn>=0.35.0",
+]
