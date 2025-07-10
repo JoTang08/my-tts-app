@@ -27,13 +27,13 @@ source .venv/bin/activate
 ### 📦 安装依赖
 
 ```bash
-uv pip install fastapi uvicorn edge-tts python-multipart deep-translator
+uv pip install fastapi hypercorn edge-tts python-multipart deep-translator
 ```
 
 ### 🚀 启动服务
 
 ```
-uvicorn app:app --reload
+hypercorn app:app --reload
 ```
 
 ### 📑 接口说明

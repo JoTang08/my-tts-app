@@ -8,6 +8,7 @@ dependencies = [
     "deep-translator>=1.11.4",
     "edge-tts>=7.0.2",
     "fastapi",
+    "hypercorn>=0.17.3",
     "python-multipart>=0.0.20",
-    "uvicorn>=0.35.0",
+    "watchfiles>=1.1.0",
 ]

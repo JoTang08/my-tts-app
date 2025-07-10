@@ -1,15 +1,20 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from edge_tts import voices, Communicate
-from deep_translator import GoogleTranslator
+from edge_tts import Communicate
+import asyncio
+import json
+
+# 全局加载一次（推荐）
+with open("voices_data.json", "r", encoding="utf-8") as f:
+    voices_data = json.load(f)
 
 app = FastAPI()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-async def generate_tts(text: str, voice: str, filename: str):
-    communicate = Communicate(text, voice=voice)
+async def generate_tts(text: str, voice: str, filename: str, rate: str = "+0%"):
+    communicate = Communicate(text, voice=voice, rate=rate)
     await communicate.save(filename)
 
 @app.get("/", response_class=HTMLResponse)
@@ -22,8 +27,9 @@ async def tts(request: Request):
     data = await request.json()
     text = data.get("text", "")
     voice = data.get("voice", "zh-CN-XiaoxiaoNeural")
+    rate = data.get("rate", "+0%")  # ← 增加默认 rate 参数,控制语速
 
-    voices = await get_voices()
+    voices = voices_data
     available_voices = [v["ShortName"] for v in voices]
 
     if voice not in available_voices:
@@ -32,23 +38,29 @@ async def tts(request: Request):
         raise HTTPException(status_code=400, detail="文本不能为空")
 
     filename = "static/output.mp3"
-    await generate_tts(text, voice, filename)
+    await generate_tts(text, voice, filename, rate=rate)  # ← 把 rate 传进去
 
     return FileResponse(filename, media_type="audio/mpeg")
 
-def t(text):
-    return GoogleTranslator(source="auto", target="zh-CN").translate(text)
-
 @app.get("/voices")
 async def get_voices():
-    raw_voices = await voices.list_voices()
-    result = []
-    for v in raw_voices:
-        result.append({
-            "name": v["ShortName"],
-            "gender": v["Gender"],
-            "gender_zh": t(v["Gender"]),
-            "locale": v["Locale"],
-            "locale_zh": t(v["Locale"])
-        })
-    return result
+    try:
+        # 给网络请求设置超时，比如10秒
+        raw_voices = voices_data
+        list = []
+        for v in raw_voices:
+            voice_personalities_zh = v.get("VoiceTag", {}).get("VoicePersonalities_zh", [])
+            list.append({
+                "名称": v["ShortName"],
+                "性别": "男性" if v["Gender"] == "Male" else "女性",
+                "语言": v["Locale_zh"],
+                "风格": voice_personalities_zh
+            })
+        return list
+
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="获取语音列表超时，请稍后重试")
+    except Exception as e:
+        # 打印异常日志方便调试（可以用 logging 替代 print）
+        print(f"获取语音列表异常: {e}")
+        raise HTTPException(status_code=500, detail="服务器内部错误")
